@@ -1,8 +1,7 @@
 import XCTest
 @testable import SimpleApiClient
 
-struct API<T: Decodable>: SimpleApiClient {
-    typealias TModel = T
+struct API: SimpleApiClient {
 }
 
 struct Model: Decodable {
@@ -18,7 +17,7 @@ final class SimpleApiClientTests: XCTestCase {
         let wait = XCTWaiter()
         let expectation = XCTestExpectation(description: "get")
         
-        API<Screen>().get(endpoint: "https://next.json-generator.com/api/json/get/VkjN2KyEd", completion: { result in
+        API().get(type: Screen.self, endpoint: "https://next.json-generator.com/api/json/get/VkjN2KyEd", completion: { result in
 
             switch result {
             case .success(let screen):

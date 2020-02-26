@@ -15,11 +15,10 @@ public enum RequestType: String {
 }
 
 public protocol SimpleApiClient {
-    associatedtype TModel: Decodable
     static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
     func post(endpoint: String, data: Data?, completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
-    func get(endpoint: String, completion: @escaping(_ result: Result<TModel?, Error>?) -> ())
-    func decode(data: Data?) throws -> TModel?
+    func get<TModel: Decodable>(type: TModel.Type, endpoint: String, completion: @escaping(_ result: Result<TModel?, Error>?) -> ())
+    func decode<TModel: Decodable>(data: Data?) throws -> TModel?
 }
 
 public extension SimpleApiClient {
@@ -37,7 +36,7 @@ public extension SimpleApiClient {
         return request
     }
     
-    func decode(data: Data?) throws -> TModel? {
+    func decode<TModel: Decodable>(data: Data?) throws -> TModel? {
         if let data = data {
             do {
                 let obj = try JSONDecoder().decode(TModel.self, from: data)
@@ -61,7 +60,7 @@ public extension SimpleApiClient {
         }.resume()
     }
     
-    func get(endpoint: String, completion: @escaping(_ result: Result<TModel?, Error>?) -> ()) {
+    func get<TModel: Decodable>(type: TModel.Type, endpoint: String, completion: @escaping(_ result: Result<TModel?, Error>?) -> ()) {
         guard let request = Self.request(urlString: endpoint, type: .GET) else {
             completion(nil)
             return
