@@ -14,7 +14,7 @@ public enum RequestType: String {
     case POST
 }
 
-protocol SimpleApiClient {
+public protocol SimpleApiClient {
     associatedtype TModel: Decodable
     static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
     func post(endpoint: String, data: Data?, completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
