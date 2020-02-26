@@ -22,7 +22,7 @@ public protocol SimpleApiClient {
     func decode(data: Data?) throws -> TModel?
 }
 
-extension SimpleApiClient {
+public extension SimpleApiClient {
     static func request(data: Data? = nil, urlString: String, type: RequestType) -> URLRequest? {
         guard let url = URL(string: urlString) else {
             return nil
@@ -37,7 +37,7 @@ extension SimpleApiClient {
         return request
     }
     
-    public func decode(data: Data?) throws -> TModel? {
+    func decode(data: Data?) throws -> TModel? {
         if let data = data {
             do {
                 let obj = try JSONDecoder().decode(TModel.self, from: data)
@@ -50,7 +50,7 @@ extension SimpleApiClient {
         return nil
     }
     
-    public func post(endpoint: String, data: Data? = nil, completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ()) {
+    func post(endpoint: String, data: Data? = nil, completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ()) {
         guard let request = Self.request(data: data, urlString: endpoint, type: .POST) else {
             completion(nil, nil, nil)
             return
@@ -61,7 +61,7 @@ extension SimpleApiClient {
         }.resume()
     }
     
-    public func get(endpoint: String, completion: @escaping(_ result: Result<TModel?, Error>?) -> ()) {
+    func get(endpoint: String, completion: @escaping(_ result: Result<TModel?, Error>?) -> ()) {
         guard let request = Self.request(urlString: endpoint, type: .GET) else {
             completion(nil)
             return
