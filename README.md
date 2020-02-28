@@ -1,3 +1,3 @@
 # SimpleApiClient
 
-A description of this package.
+The most bare-bones api client you can imagine in Swift
