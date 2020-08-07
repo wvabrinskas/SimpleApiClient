@@ -29,6 +29,11 @@ public protocol SimpleApiClient {
 }
 
 public extension SimpleApiClient {
+   
+    static var authorizationHeaders: [String: String]? {
+      return nil
+    }
+      
     static func request(data: Data? = nil, urlString: String, type: RequestType) -> URLRequest? {
         guard let url = URL(string: urlString) else {
             return nil

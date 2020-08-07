@@ -3,6 +3,7 @@ import XCTest
 
 struct API: SimpleApiClient {
     static var authorizationHeaders: [String : String]?
+  
     func getScreen(completion: @escaping (Result<Screen?, Error>?) -> ()) {
         self.get(endpoint: "https://next.json-generator.com/api/json/get/VkjN2KyEd", completion: completion)
     }
