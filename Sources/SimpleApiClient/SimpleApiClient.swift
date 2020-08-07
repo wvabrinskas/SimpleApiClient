@@ -16,8 +16,14 @@ public enum RequestType: String {
 
 public protocol SimpleApiClient {
     static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
-    func post(endpoint: String, data: Data?, completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
-    func get<TModel: Decodable>(endpoint: String, data: Data?, completion: @escaping(Result<TModel?, Error>?) -> ())
+    func post(endpoint: String,
+              headers: [String: String],
+              data: Data?,
+              completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
+    func get<TModel: Decodable>(endpoint: String,
+                                headers: [String: String],
+                                data: Data?,
+                                completion: @escaping(Result<TModel?, Error>?) -> ())
     func decode<TModel: Decodable>(data: Data?) throws -> TModel?
 }
 
@@ -49,21 +55,37 @@ public extension SimpleApiClient {
         return nil
     }
     
-    func post(endpoint: String, data: Data? = nil, completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ()) {
-        guard let request = Self.request(data: data, urlString: endpoint, type: .POST) else {
+  func post(endpoint: String,
+            headers: [String: String] = [:],
+            data: Data? = nil,
+            completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ()) {
+    
+        guard var request = Self.request(data: data, urlString: endpoint, type: .POST) else {
             completion(nil, nil, nil)
             return
         }
-        
+    
+        headers.forEach { (key, value) in
+          request.addValue(value, forHTTPHeaderField: key)
+        }
+            
         URLSession.shared.dataTask(with: request) { (dataResp, response, error) in
             completion(dataResp, response, error)
         }.resume()
     }
     
-    func get<TModel: Decodable>(endpoint: String, data: Data? = nil, completion: @escaping(Result<TModel?, Error>?) -> ()) {
-        guard let request = Self.request(data: data, urlString: endpoint, type: .GET) else {
+    func get<TModel: Decodable>(endpoint: String,
+                                headers: [String: String] = [:],
+                                data: Data? = nil,
+                                completion: @escaping(Result<TModel?, Error>?) -> ()) {
+      
+        guard var request = Self.request(data: data, urlString: endpoint, type: .GET) else {
             completion(nil)
             return
+        }
+      
+        headers.forEach { (key, value) in
+          request.addValue(value, forHTTPHeaderField: key)
         }
         
         URLSession.shared.dataTask(with: request) { (dataResp, response, error) in
