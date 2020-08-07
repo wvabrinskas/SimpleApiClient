@@ -17,7 +17,7 @@ public enum RequestType: String {
 public protocol SimpleApiClient {
     static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
     func post(endpoint: String, data: Data?, completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
-    func get<TModel: Decodable>(endpoint: String, completion: @escaping(Result<TModel?, Error>?) -> ())
+    func get<TModel: Decodable>(endpoint: String, data: Data?, completion: @escaping(Result<TModel?, Error>?) -> ())
     func decode<TModel: Decodable>(data: Data?) throws -> TModel?
 }
 
@@ -60,8 +60,8 @@ public extension SimpleApiClient {
         }.resume()
     }
     
-    func get<TModel: Decodable>(endpoint: String, completion: @escaping(Result<TModel?, Error>?) -> ()) {
-        guard let request = Self.request(urlString: endpoint, type: .GET) else {
+    func get<TModel: Decodable>(endpoint: String, data: Data? = nil, completion: @escaping(Result<TModel?, Error>?) -> ()) {
+        guard let request = Self.request(data: data, urlString: endpoint, type: .GET) else {
             completion(nil)
             return
         }
