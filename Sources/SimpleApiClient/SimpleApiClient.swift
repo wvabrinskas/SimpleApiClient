@@ -15,6 +15,7 @@ public enum RequestType: String {
 }
 
 public protocol SimpleApiClient {
+    static var authorizationHeaders: [String: String]? { get set }
     static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
     func post(endpoint: String,
               headers: [String: String],
@@ -37,6 +38,12 @@ public extension SimpleApiClient {
         request.httpBody = data
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("application/json", forHTTPHeaderField: "Accept")
+        
+        if let auth = authorizationHeaders {
+          auth.forEach { (key, value) in
+            request.addValue(value, forHTTPHeaderField: key)
+          }
+        }
         request.httpMethod = type.rawValue
         
         return request
