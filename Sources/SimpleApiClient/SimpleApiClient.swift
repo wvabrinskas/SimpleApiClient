@@ -20,15 +20,12 @@ public protocol SimpleApiClient {
   func post(endpoint: String,
             headers: [String: String],
             data: Data?,
-            backgroundIdentifier: String?,
             completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
   func get<TModel: Decodable>(endpoint: String,
                               headers: [String: String],
                               data: Data?,
-                              backgroundIdentifier: String?,
                               completion: @escaping(Result<TModel?, Error>?) -> ())
   func decode<TModel: Decodable>(data: Data?) throws -> TModel?
-  func getSession(_ backgroundIdentifier: String?) -> URLSession
 }
 
 public extension SimpleApiClient {
@@ -73,7 +70,6 @@ public extension SimpleApiClient {
   func post(endpoint: String,
             headers: [String: String] = [:],
             data: Data? = nil,
-            backgroundIdentifier: String? = nil,
             completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ()) {
     
     guard var request = Self.request(data: data, urlString: endpoint, type: .POST) else {
@@ -85,25 +81,14 @@ public extension SimpleApiClient {
       request.addValue(value, forHTTPHeaderField: key)
     }
     
-    self.getSession(backgroundIdentifier).dataTask(with: request) { (dataResp, response, error) in
+    URLSession.shared.dataTask(with: request) { (dataResp, response, error) in
       completion(dataResp, response, error)
     }.resume()
-  }
-  
-  func getSession(_ backgroundIdentifier: String?) -> URLSession {
-    if let id = backgroundIdentifier {
-      let config = URLSessionConfiguration.background(withIdentifier: id)
-      let session = URLSession.init(configuration: config)
-      return session
-    }
-    
-    return URLSession.shared
   }
   
   func get<TModel: Decodable>(endpoint: String,
                               headers: [String: String] = [:],
                               data: Data? = nil,
-                              backgroundIdentifier: String? = nil,
                               completion: @escaping(Result<TModel?, Error>?) -> ()) {
     
     guard var request = Self.request(data: data, urlString: endpoint, type: .GET) else {
@@ -115,7 +100,7 @@ public extension SimpleApiClient {
       request.addValue(value, forHTTPHeaderField: key)
     }
     
-    self.getSession(backgroundIdentifier).dataTask(with: request) { (dataResp, response, error) in
+    URLSession.shared.dataTask(with: request) { (dataResp, response, error) in
       guard error == nil else {
         completion(nil)
         return
