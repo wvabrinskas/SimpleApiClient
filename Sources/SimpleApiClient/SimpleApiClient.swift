@@ -14,6 +14,17 @@ public enum RequestType: String {
   case POST
 }
 
+public enum HTTPError: Error {
+  case loadError
+  
+  var localizedDescription: String {
+    switch self {
+    case .loadError:
+      return "could not load data from response"
+    }
+  }
+}
+
 public protocol SimpleApiClient {
   static var authorizationHeaders: [String: String]? { get set }
   static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
@@ -92,7 +103,7 @@ public extension SimpleApiClient {
                               completion: @escaping(Result<TModel?, Error>?) -> ()) {
     
     guard var request = Self.request(data: data, urlString: endpoint, type: .GET) else {
-      completion(nil)
+      completion(.failure(HTTPError.loadError))
       return
     }
     
@@ -102,7 +113,7 @@ public extension SimpleApiClient {
     
     URLSession.shared.dataTask(with: request) { (dataResp, response, error) in
       guard error == nil else {
-        completion(nil)
+        completion(.failure(error ?? HTTPError.loadError))
         return
       }
       let result: Result<TModel?, Error> = Result { try self.decode(data: dataResp) }
