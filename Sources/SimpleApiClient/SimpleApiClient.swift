@@ -32,6 +32,10 @@ public protocol SimpleApiClient {
             headers: [String: String],
             data: Data?,
             completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
+  func postFormEncoded(endpoint: String,
+                       headers: [String: String],
+                       data: Data?,
+                       completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
   func get<TModel: Decodable>(endpoint: String,
                               headers: [String: String],
                               data: Data?,
@@ -43,6 +47,25 @@ public extension SimpleApiClient {
   
   static var authorizationHeaders: [String: String]? {
     return nil
+  }
+  
+  static func requestForm(data: Data? = nil, urlString: String, type: RequestType) -> URLRequest? {
+    guard let url = URL(string: urlString) else {
+      return nil
+    }
+    
+    var request = URLRequest(url: url)
+    request.httpBody = data
+    request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+    
+    if let auth = authorizationHeaders {
+      auth.forEach { (key, value) in
+        request.addValue(value, forHTTPHeaderField: key)
+      }
+    }
+    request.httpMethod = type.rawValue
+    
+    return request
   }
   
   static func request(data: Data? = nil, urlString: String, type: RequestType) -> URLRequest? {
@@ -76,6 +99,25 @@ public extension SimpleApiClient {
     }
     
     return nil
+  }
+  
+  func postFormEncoded(endpoint: String,
+                       headers: [String: String] = [:],
+                       data: Data? = nil,
+                       completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ()) {
+    
+    guard var request = Self.requestForm(data: data, urlString: endpoint, type: .POST) else {
+      completion(nil, nil, nil)
+      return
+    }
+    
+    headers.forEach { (key, value) in
+      request.addValue(value, forHTTPHeaderField: key)
+    }
+    
+    URLSession.shared.dataTask(with: request) { (dataResp, response, error) in
+      completion(dataResp, response, error)
+    }.resume()
   }
   
   func post(endpoint: String,
