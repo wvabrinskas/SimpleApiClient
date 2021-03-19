@@ -57,8 +57,7 @@ public extension SimpleApiClient {
     var request = URLRequest(url: url)
     request.httpBody = data
     request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-    request.addValue("application/json", forHTTPHeaderField: "Accept")
-
+    
     if let auth = authorizationHeaders {
       auth.forEach { (key, value) in
         request.addValue(value, forHTTPHeaderField: key)
