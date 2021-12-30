@@ -62,29 +62,32 @@ public enum HTTPError: Error {
   }
 }
 
+public enum PostType {
+  case standard, form
+}
+
 public protocol SimpleApiClient {
   static var authorizationHeaders: [String: String]? { get set }
   static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
-  func post(endpoint: String,
+  
+  func post(type: PostType,
+            endpoint: String,
             headers: [String: String],
             data: Data?,
             completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
-  func postFormEncoded(endpoint: String,
-                       headers: [String: String],
-                       data: Data?,
-                       completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ())
+  
   func get<TModel: Decodable>(endpoint: String,
                               headers: [String: String],
                               data: Data?,
                               completion: @escaping(Result<TModel, Error>?) -> ())
-  func decode<TModel: Decodable>(data: Data) throws -> TModel
   
   func get<TModel: Decodable>(endpoint: String,
                               urlSession: URLSession,
                               headers: [String: String],
                               data: Data?) -> AnyPublisher<Result<TModel, Error>, Error>
   
-  func post<TModel: Decodable>(endpoint: String,
+  func post<TModel: Decodable>(type: PostType,
+                               endpoint: String,
                                urlSession: URLSession,
                                headers: [String: String],
                                data: Data?) -> AnyPublisher<Result<TModel, Error>, Error>
@@ -94,10 +97,11 @@ public protocol SimpleApiClient {
                               headers: [String: String],
                               data: Data?) async -> Result<TModel, Error>
   
-  func post<TModel: Decodable>(endpoint: String,
-                              urlSession: URLSession,
-                              headers: [String: String],
-                              data: Data?) async -> Result<TModel, Error>
+  func post<TModel: Decodable>(type: PostType,
+                               endpoint: String,
+                               urlSession: URLSession,
+                               headers: [String: String],
+                               data: Data?) async -> Result<TModel, Error>
 }
 
 public extension SimpleApiClient {
@@ -106,7 +110,8 @@ public extension SimpleApiClient {
     return nil
   }
   
-  static func requestForm(data: Data? = nil, urlString: String, type: RequestType) -> URLRequest? {
+  private static func requestForm(data: Data? = nil,
+                                  urlString: String) -> URLRequest? {
     guard let url = URL(string: urlString) else {
       return nil
     }
@@ -120,12 +125,16 @@ public extension SimpleApiClient {
         request.addValue(value, forHTTPHeaderField: key)
       }
     }
-    request.httpMethod = type.rawValue
+    
+    //form is a post only
+    request.httpMethod = RequestType.POST.rawValue
     
     return request
   }
   
-  static func request(data: Data? = nil, urlString: String, type: RequestType) -> URLRequest? {
+  static func request(data: Data? = nil,
+                      urlString: String,
+                      type: RequestType) -> URLRequest? {
     guard let url = URL(string: urlString) else {
       return nil
     }
@@ -145,41 +154,35 @@ public extension SimpleApiClient {
     return request
   }
   
-  func decode<TModel: Decodable>(data: Data) throws -> TModel {
-      do {
-        let obj = try JSONDecoder().decode(TModel.self, from: data)
-        return obj
-      } catch {
-        print(error.localizedDescription)
-        throw error
-      }
+  private static func postRequest(type: PostType,
+                                  data: Data? = nil,
+                                  urlString: String) -> URLRequest? {
+    
+    switch type {
+    case .standard:
+      return Self.request(data: data, urlString: urlString, type: .POST)
+    case .form:
+      return Self.requestForm(data: data, urlString: urlString)
+    }
   }
   
-  func postFormEncoded(endpoint: String,
-                       headers: [String: String] = [:],
-                       data: Data? = nil,
-                       completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ()) {
-    
-    guard var request = Self.requestForm(data: data, urlString: endpoint, type: .POST) else {
-      completion(nil, nil, nil)
-      return
+  private func decode<TModel: Decodable>(data: Data) throws -> TModel {
+    do {
+      let obj = try JSONDecoder().decode(TModel.self, from: data)
+      return obj
+    } catch {
+      print(error.localizedDescription)
+      throw error
     }
-    
-    headers.forEach { (key, value) in
-      request.addValue(value, forHTTPHeaderField: key)
-    }
-    
-    URLSession.shared.dataTask(with: request) { (dataResp, response, error) in
-      completion(dataResp, response, error)
-    }.resume()
   }
   
-  func post(endpoint: String,
+  func post(type: PostType = .standard,
+            endpoint: String,
             headers: [String: String] = [:],
             data: Data? = nil,
             completion: @escaping(_ data: Data?, _ urlResponse: URLResponse?, _ error: Error?) -> ()) {
     
-    guard var request = Self.request(data: data, urlString: endpoint, type: .POST) else {
+    guard var request = Self.postRequest(type: type, data: data, urlString: endpoint) else {
       completion(nil, nil, nil)
       return
     }
@@ -217,7 +220,7 @@ public extension SimpleApiClient {
         completion(.failure(HTTPError.emptyData))
         return
       }
-
+      
       do {
         let model: TModel = try self.decode(data: dataResp)
         completion(.success(model))
@@ -239,12 +242,13 @@ public extension SimpleApiClient {
     return self.dataPublisher(request: request, session: urlSession)
   }
   
-  func post<TModel: Decodable>(endpoint: String,
+  func post<TModel: Decodable>(type: PostType = .standard,
+                               endpoint: String,
                                urlSession: URLSession = .shared,
                                headers: [String: String] = [:],
                                data: Data? = nil) -> AnyPublisher<Result<TModel, Error>, Error> {
     
-    guard var request = Self.request(data: data, urlString: endpoint, type: .POST) else {
+    guard var request = Self.postRequest(type: type, data: data, urlString: endpoint) else {
       return AnyPublisher(Fail<Result<TModel, Error>, Error>(error: URLError.init(.cannotFindHost)))
     }
     
@@ -275,12 +279,13 @@ public extension SimpleApiClient {
     }
   }
   
-  func post<TModel: Decodable>(endpoint: String,
-                              urlSession: URLSession = .shared,
-                              headers: [String: String] = [:],
-                              data: Data? = nil) async -> Result<TModel, Error> {
+  func post<TModel: Decodable>(type: PostType = .standard,
+                               endpoint: String,
+                               urlSession: URLSession = .shared,
+                               headers: [String: String] = [:],
+                               data: Data? = nil) async -> Result<TModel, Error> {
     
-    guard var request = Self.request(data: data, urlString: endpoint, type: .POST) else {
+    guard var request = Self.postRequest(type: type, data: data, urlString: endpoint) else {
       return .failure(URLError(.cannotFindHost))
     }
     
