@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 @testable import SimpleApiClient
 
 struct API: SimpleApiClient {
@@ -7,6 +8,10 @@ struct API: SimpleApiClient {
   
   func getScreen(completion: @escaping (Result<Model?, Error>?) -> ()) {
     self.get(endpoint: endpoint, completion: completion)
+  }
+  
+  func getScreen() -> AnyPublisher<Result<Model?, Error>, Error> {
+    self.get(endpoint: endpoint)
   }
   
   func getScreen() async -> Result<Model?, Error> {
@@ -34,6 +39,22 @@ final class SimpleApiClientTests: XCTestCase {
   func testAsyncAwaitGETApi() async {
     let result = await API().getScreen()
     self.checkModel(result: result)
+  }
+  
+  func testPublisherGETApi() {
+    let wait = XCTWaiter()
+    let expectation = XCTestExpectation(description: "get")
+    
+    var cancellables: Set<AnyCancellable> = []
+    API().getScreen()
+      .sink { _ in
+      } receiveValue: { model in
+        self.checkModel(result: model)
+        expectation.fulfill()
+      }
+      .store(in: &cancellables)
+    
+    wait.wait(for: [expectation], timeout: 10)
   }
   
   static var allTests = [
