@@ -14,6 +14,7 @@ struct API: SimpleApiClient {
     self.get(endpoint: endpoint)
   }
   
+  @available(macOS 12, *)
   func getScreen() async -> Result<Model?, Error> {
     await self.get(endpoint: endpoint)
   }
@@ -36,6 +37,7 @@ final class SimpleApiClientTests: XCTestCase {
     wait.wait(for: [expectation], timeout: 10)
   }
   
+  @available(macOS 12, *)
   func testAsyncAwaitGETApi() async {
     let result = await API().getScreen()
     self.checkModel(result: result)
@@ -56,10 +58,6 @@ final class SimpleApiClientTests: XCTestCase {
     
     wait.wait(for: [expectation], timeout: 10)
   }
-  
-  static var allTests = [
-    ("testGETApi", testGETApi),
-  ]
   
   private func checkModel(result: Result<Model?, Error>?) {
     switch result {
