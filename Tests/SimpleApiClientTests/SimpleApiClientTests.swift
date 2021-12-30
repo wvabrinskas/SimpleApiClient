@@ -2,51 +2,58 @@ import XCTest
 @testable import SimpleApiClient
 
 struct API: SimpleApiClient {
-    static var authorizationHeaders: [String : String]?
+  static var authorizationHeaders: [String : String]?
+  private let endpoint = "http://echo.jsontest.com/test/test/key/value"
   
-    func getScreen(completion: @escaping (Result<Screen?, Error>?) -> ()) {
-        self.get(endpoint: "https://next.json-generator.com/api/json/get/VkjN2KyEd", completion: completion)
-    }
+  func getScreen(completion: @escaping (Result<Model?, Error>?) -> ()) {
+    self.get(endpoint: endpoint, completion: completion)
+  }
+  
+  func getScreen() async -> Result<Model?, Error> {
+    await self.get(endpoint: endpoint)
+  }
 }
 
 struct Model: Decodable {
-    var title: String
-}
-
-struct Screen: Decodable {
-    var data: [Model]
+  var test: String
+  var key: String
 }
 
 final class SimpleApiClientTests: XCTestCase {
-    func testGETApi() {
-        let wait = XCTWaiter()
-        let expectation = XCTestExpectation(description: "get")
-        
-        API().getScreen { result in
-            switch result {
-            case .success(let screen):
-                guard let data = screen else {
-                    XCTFail("Could not get Screen")
-                    return
-                }
-
-                XCTAssert(data.data.count > 0, "No data")
-
-                data.data.forEach { (model) in
-                    XCTAssert(model.title == "UNIT_TEST", "Model not decoded properly")
-                }
-
-            case .failure(let error):
-                XCTFail(error.localizedDescription)
-            case .none:
-                XCTFail("default")
-            }
-            expectation.fulfill()
-        }
-        wait.wait(for: [expectation], timeout: 10)
+  func testGETApi() {
+    let wait = XCTWaiter()
+    let expectation = XCTestExpectation(description: "get")
+    
+    API().getScreen { result in
+      self.checkModel(result: result)
+      expectation.fulfill()
     }
-
-    static var allTests = [
-        ("testGETApi", testGETApi),
-    ]
+    wait.wait(for: [expectation], timeout: 10)
+  }
+  
+  func testAsyncAwaitGETApi() async {
+    let result = await API().getScreen()
+    self.checkModel(result: result)
+  }
+  
+  static var allTests = [
+    ("testGETApi", testGETApi),
+  ]
+  
+  private func checkModel(result: Result<Model?, Error>?) {
+    switch result {
+    case .success(let screen):
+      guard let model = screen else {
+        XCTFail("Could not get Screen")
+        return
+      }
+      
+      XCTAssert(model.test == "test")
+      XCTAssert(model.key == "value")
+    case .failure(let error):
+      XCTFail(error.localizedDescription)
+    case .none:
+      XCTFail("default")
+    }
+  }
 }

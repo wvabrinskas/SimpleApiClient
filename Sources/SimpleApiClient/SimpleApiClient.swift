@@ -10,6 +10,39 @@
 import Foundation
 import Combine
 
+@available(iOS, deprecated: 15.0, message: "Use the built-in API instead")
+extension URLSession {
+  func data(from url: URL) async throws -> (Data, URLResponse) {
+    try await withCheckedThrowingContinuation { continuation in
+      let task = self.dataTask(with: url) { data, response, error in
+        guard let data = data, let response = response else {
+          let error = error ?? URLError(.badServerResponse)
+          return continuation.resume(throwing: error)
+        }
+        
+        continuation.resume(returning: (data, response))
+      }
+      
+      task.resume()
+    }
+  }
+  
+  func data(from request: URLRequest) async throws -> (Data, URLResponse) {
+    try await withCheckedThrowingContinuation { continuation in
+      let task = self.dataTask(with: request) { data, response, error in
+        guard let data = data, let response = response else {
+          let error = error ?? URLError(.badServerResponse)
+          return continuation.resume(throwing: error)
+        }
+        
+        continuation.resume(returning: (data, response))
+      }
+      
+      task.resume()
+    }
+  }
+}
+
 public enum RequestType: String {
   case GET
   case POST
@@ -27,7 +60,6 @@ public enum HTTPError: Error {
 }
 
 public protocol SimpleApiClient {
-  static var apiCancellables: Set<AnyCancellable>? { get set }
   static var authorizationHeaders: [String: String]? { get set }
   static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
   func post(endpoint: String,
@@ -53,6 +85,16 @@ public protocol SimpleApiClient {
                                urlSession: URLSession,
                                headers: [String: String],
                                data: Data?) -> AnyPublisher<TModel, Error>
+  
+  func get<TModel: Decodable>(endpoint: String,
+                              urlSession: URLSession,
+                              headers: [String: String],
+                              data: Data?) async -> Result<TModel?, Error>
+  
+  func post<TModel: Decodable>(endpoint: String,
+                              urlSession: URLSession,
+                              headers: [String: String],
+                              data: Data?) async -> Result<TModel?, Error>
 }
 
 public extension SimpleApiClient {
@@ -201,6 +243,50 @@ public extension SimpleApiClient {
     }
     
     return self.dataPublisher(request: request, session: urlSession)
+  }
+  
+  func get<TModel: Decodable>(endpoint: String,
+                              urlSession: URLSession = .shared,
+                              headers: [String: String] = [:],
+                              data: Data? = nil) async -> Result<TModel?, Error> {
+    
+    guard let request = Self.request(data: data, urlString: endpoint, type: .GET) else {
+      return .failure(URLError(.cannotFindHost))
+    }
+    
+    do {
+      let (model, _) = try await urlSession.data(from: request)
+      let decodedModel: TModel? = try self.decode(data: model)
+      return .success(decodedModel)
+      
+    } catch {
+      print(error.localizedDescription)
+      return .failure(URLError(.cannotParseResponse))
+    }
+  }
+  
+  func post<TModel: Decodable>(endpoint: String,
+                              urlSession: URLSession = .shared,
+                              headers: [String: String] = [:],
+                              data: Data? = nil) async -> Result<TModel?, Error> {
+    
+    guard var request = Self.request(data: data, urlString: endpoint, type: .POST) else {
+      return .failure(URLError(.cannotFindHost))
+    }
+    
+    headers.forEach { (key, value) in
+      request.addValue(value, forHTTPHeaderField: key)
+    }
+    
+    do {
+      let (model, _) = try await urlSession.data(from: request)
+      let decodedModel: TModel? = try self.decode(data: model)
+      return .success(decodedModel)
+      
+    } catch {
+      print(error.localizedDescription)
+      return .failure(URLError(.cannotParseResponse))
+    }
   }
   
   private func dataPublisher<TModel: Decodable>(request: URLRequest, session: URLSession = .shared) -> AnyPublisher<TModel, Error> {
