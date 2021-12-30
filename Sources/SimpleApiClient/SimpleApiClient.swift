@@ -8,6 +8,7 @@
 
 
 import Foundation
+import Combine
 
 public enum RequestType: String {
   case GET
@@ -26,6 +27,7 @@ public enum HTTPError: Error {
 }
 
 public protocol SimpleApiClient {
+  static var apiCancellables: Set<AnyCancellable>? { get set }
   static var authorizationHeaders: [String: String]? { get set }
   static func request(data: Data?, urlString: String, type: RequestType) -> URLRequest?
   func post(endpoint: String,
@@ -41,6 +43,16 @@ public protocol SimpleApiClient {
                               data: Data?,
                               completion: @escaping(Result<TModel?, Error>?) -> ())
   func decode<TModel: Decodable>(data: Data?) throws -> TModel?
+  
+  func get<TModel: Decodable>(endpoint: String,
+                              urlSession: URLSession,
+                              headers: [String: String],
+                              data: Data?) -> AnyPublisher<TModel, Error>
+  
+  func post<TModel: Decodable>(endpoint: String,
+                               urlSession: URLSession,
+                               headers: [String: String],
+                               data: Data?) -> AnyPublisher<TModel, Error>
 }
 
 public extension SimpleApiClient {
@@ -161,5 +173,49 @@ public extension SimpleApiClient {
       let result: Result<TModel?, Error> = Result { try self.decode(data: dataResp) }
       completion(result)
     }.resume()
+  }
+  
+  func get<TModel: Decodable>(endpoint: String,
+                              urlSession: URLSession = .shared,
+                              headers: [String: String] = [:],
+                              data: Data? = nil) -> AnyPublisher<TModel, Error> {
+    
+    guard let request = Self.request(data: data, urlString: endpoint, type: .GET) else {
+      return AnyPublisher(Fail<TModel, Error>(error: URLError.init(.cannotFindHost)))
+    }
+    
+    return self.dataPublisher(request: request, session: urlSession)
+  }
+  
+  func post<TModel: Decodable>(endpoint: String,
+                               urlSession: URLSession = .shared,
+                               headers: [String: String] = [:],
+                               data: Data? = nil) -> AnyPublisher<TModel, Error> {
+    
+    guard var request = Self.request(data: data, urlString: endpoint, type: .POST) else {
+      return AnyPublisher(Fail<TModel, Error>(error: URLError.init(.cannotFindHost)))
+    }
+    
+    headers.forEach { (key, value) in
+      request.addValue(value, forHTTPHeaderField: key)
+    }
+    
+    return self.dataPublisher(request: request, session: urlSession)
+  }
+  
+  private func dataPublisher<TModel: Decodable>(request: URLRequest, session: URLSession = .shared) -> AnyPublisher<TModel, Error> {
+    let sessionPublisher = session.dataTaskPublisher(for: request)
+      .subscribe(on: DispatchQueue.global())
+      .tryMap() { element -> Data in
+        guard let httpResponse = element.response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+                throw URLError(.badServerResponse)
+              }
+        return element.data
+      }
+      .decode(type: TModel.self, decoder: JSONDecoder())
+      .receive(on: DispatchQueue.main)
+    
+    return AnyPublisher(sessionPublisher)
   }
 }
