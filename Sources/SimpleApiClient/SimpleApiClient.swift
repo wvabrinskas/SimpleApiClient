@@ -12,7 +12,6 @@ import Combine
 
 @available(iOS, deprecated: 15.0, message: "Use the built-in API instead")
 @available(macOS 12, *)
-@available(watchOS 6, *)
 extension URLSession {
   func data(from url: URL) async throws -> (Data, URLResponse) {
     try await withCheckedThrowingContinuation { continuation in
@@ -95,14 +94,12 @@ public protocol SimpleApiClient {
                                data: Data?) -> AnyPublisher<Result<TModel, Error>, Error>
   
   @available(macOS 12, *)
-  @available(watchOS 6, *)
   func get<TModel: Decodable>(endpoint: String,
                               urlSession: URLSession,
                               headers: [String: String],
                               data: Data?) async -> Result<TModel, Error>
   
   @available(macOS 12, *)
-  @available(watchOS 6, *)
   func post<TModel: Decodable>(type: PostType,
                                endpoint: String,
                                urlSession: URLSession,
@@ -266,7 +263,6 @@ public extension SimpleApiClient {
   }
   
   @available(macOS 12, *)
-  @available(watchOS 6, *)
   func get<TModel: Decodable>(endpoint: String,
                               urlSession: URLSession = .shared,
                               headers: [String: String] = [:],
@@ -288,7 +284,6 @@ public extension SimpleApiClient {
   }
   
   @available(macOS 12, *)
-  @available(watchOS 6, *)
   func post<TModel: Decodable>(type: PostType = .standard,
                                endpoint: String,
                                urlSession: URLSession = .shared,

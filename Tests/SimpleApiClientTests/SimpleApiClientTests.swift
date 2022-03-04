@@ -15,7 +15,6 @@ struct API: SimpleApiClient {
   }
   
   @available(macOS 12, *)
-  @available(watchOS 6, *)
   func getScreen() async -> Result<Model?, Error> {
     await self.get(endpoint: endpoint)
   }
@@ -39,7 +38,6 @@ final class SimpleApiClientTests: XCTestCase {
   }
   
   @available(macOS 12, *)
-  @available(watchOS 6, *)
   func testAsyncAwaitGETApi() async {
     let result = await API().getScreen()
     self.checkModel(result: result)
