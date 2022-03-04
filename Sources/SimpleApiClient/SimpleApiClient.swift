@@ -169,7 +169,7 @@ public extension SimpleApiClient {
     }
   }
   
-  private func decode<TModel: Decodable>(data: Data) throws -> TModel {
+  func decode<TModel: Decodable>(data: Data) throws -> TModel {
     do {
       let obj = try JSONDecoder().decode(TModel.self, from: data)
       return obj
